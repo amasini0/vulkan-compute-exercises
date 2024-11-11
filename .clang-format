@@ -1,0 +1,22 @@
+---
+Language: Cpp
+Standard: c++20
+BasedOnStyle: Google
+
+ColumnLimit: 100
+IndentWidth: 4
+UseTab: Never
+TabWidth: 4
+
+PointerAlignment: Left
+QualifierAlignment: Left
+ReferenceAlignment: Pointer
+
+AllowAllArgumentsOnNextLine: true
+AllowShortLoopsOnASingleLine: false
+AllowShortLambdasOnASingleLine: Empty
+AllowShortFunctionsOnASingleLine: Empty
+AllowShortIfStatementsOnASingleLine: false
+
+InsertBraces: true
+ExperimentalAutoDetectBinPacking: true
