@@ -119,4 +119,4 @@ namespace Framework
 	}
 };
 
-#endif GPUSIM_FRAMEWORK_H_INCLUDED
+#endif // GPUSIM_FRAMEWORK_H_INCLUDED

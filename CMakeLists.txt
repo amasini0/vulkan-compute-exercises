@@ -5,6 +5,16 @@ set(CMAKE_CXX_STANDARD 17)
 
 find_package(Vulkan REQUIRED)
 
+include(FetchContent)
+FetchContent_Declare(
+	glm
+	GIT_REPOSITORY https://github.com/g-truc/glm.git
+	GIT_TAG        0af55ccecd98d4e5a8d1fad7de25ba429d60e863 #1.0.1
+	GIT_SHALLOW    1
+	EXCLUDE_FROM_ALL
+)
+FetchContent_MakeAvailable(glm)
+
 OPTION(DEBUG_SHADERS "Build debug info for shader files" OFF)
 
 IF (DEBUG_SHADERS)
