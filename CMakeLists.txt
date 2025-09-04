@@ -1,10 +1,10 @@
-cmake_minimum_required(VERSION 3.8)
+cmake_minimum_required(VERSION 3.14)
 project(VulkanComputeExercsises)
 
-set(CMAKE_CXX_STANDARD 17)
-
+# Vulkan must be installed from system
 find_package(Vulkan REQUIRED)
 
+# glm is fetched during configuration
 include(FetchContent)
 FetchContent_Declare(
 	glm
@@ -34,6 +34,10 @@ function(addGLSL target source)
 	OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/${filename}.spv
 	)
 endfunction()
+
+# Stub library to propagate project settings
+add_library(global_compile_features INTERFACE)
+target_compile_features(global_compile_features INTERFACE cxx_std_17)
 
 add_subdirectory(framework)
 add_subdirectory(00_MyGPU)
