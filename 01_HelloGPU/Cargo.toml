@@ -1,0 +1,13 @@
+[package]
+name = "e01_HelloGPU"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = "1.0.100"
+ash = { version = "0.38.0", features = ["linked"] }
+framework = { version = "0.1.0", path = "../framework" }
+
+[[bin]]
+name = "01_HelloGPU"
+path = "src/main.rs"

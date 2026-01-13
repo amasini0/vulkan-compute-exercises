@@ -32,6 +32,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "e01_HelloGPU"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "ash",
+ "framework",
+]
+
+[[package]]
+name = "framework"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "ash",
+]
+
+[[package]]
 name = "libloading"
 version = "0.8.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
