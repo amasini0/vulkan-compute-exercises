@@ -1,0 +1,82 @@
+use anyhow::Result;
+use ash::vk;
+use framework::{self, PipelineObjects, VulkanObjects};
+use std::env;
+
+fn main() -> Result<()> {
+    let program = env::args().next().unwrap(); // first argument always available
+    println!("\n{} starting...\n", program);
+
+    // Set up Vulkan environment
+    let VulkanObjects {
+        instance,
+        physical_device,
+        device,
+        queue,
+        command_pool,
+    } = {
+        let app_name = c"Task 1";
+        let api_version = vk::make_api_version(0, 1, 4, 0);
+        framework::setup_basic_compute(app_name, api_version, None, None)?
+    };
+
+    // Print device name
+    let mut device_props2 = vk::PhysicalDeviceProperties2::default();
+    unsafe { instance.get_physical_device_properties2(physical_device, &mut device_props2) };
+
+    let name = device_props2.properties.device_name_as_c_str()?;
+    println!("Device name: {:?}", name);
+
+    // Create compute pipeline
+    let source_file = format!("{}/hello.spv", env::var("OUT_DIR")?);
+    let descriptor_set_layouts = [{
+        let create_info = vk::DescriptorSetLayoutCreateInfo::default();
+        unsafe { device.create_descriptor_set_layout(&create_info, None)? }
+    }; 1];
+
+    let PipelineObjects {
+        shader_module: _,
+        pipeline_layout: _,
+        pipeline_cache: _,
+        pipeline,
+    } = framework::setup_compute_pipeline(device.clone(), &source_file, &descriptor_set_layouts)?;
+
+    // Create command buffer and register commands
+    let command_buffers = {
+        let allocate_info = vk::CommandBufferAllocateInfo::default()
+            .command_pool(command_pool)
+            .level(vk::CommandBufferLevel::PRIMARY)
+            .command_buffer_count(1);
+
+        unsafe { device.allocate_command_buffers(&allocate_info)? }
+    };
+
+    // Register commands in command buffer and dispatch
+    unsafe {
+        device.begin_command_buffer(command_buffers[0], &vk::CommandBufferBeginInfo::default())?;
+        device.cmd_bind_pipeline(command_buffers[0], vk::PipelineBindPoint::COMPUTE, pipeline);
+        device.cmd_dispatch(command_buffers[0], 4, 1, 1);
+        device.end_command_buffer(command_buffers[0])?;
+    }
+
+    // Submit command buffer to queue
+    let submit_info = [vk::SubmitInfo::default(); 1];
+    unsafe {
+        let create_info = vk::FenceCreateInfo::default();
+        let fence = device.create_fence(&create_info, None)?;
+        device.queue_submit(queue, &submit_info, fence)?;
+        device.wait_for_fences(&[fence; 1], true, 10000)?;
+    }
+
+    Ok(())
+}
+
+/*
+==================================== Task 1 ====================================
+1) Implement the function framework::setup_basic_compute in framework crate.
+2) Implement the function Framework::setup_compute_pipeline in framework crate.
+3) Complete the shader file hello.slang to print a basic message.
+4) Optional: Experiment with different dispatch/work group configurations. There
+is a way to actually set the work group size from the host side! You can try to
+do this, but you will probably need your own pipeline creation function for this.
+*/

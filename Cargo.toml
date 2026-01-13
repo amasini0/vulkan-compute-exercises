@@ -1,4 +1,4 @@
 [workspace]
 resolver = "3"
-members = ["00_MyGPU"]
+members = ["00_MyGPU", "01_HelloGPU", "framework"]
 
