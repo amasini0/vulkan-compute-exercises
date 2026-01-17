@@ -3,6 +3,7 @@ use ash::{Device, Entry, Instance, vk};
 use std::ffi::{CStr, c_char};
 use std::fs::File;
 
+/// Handles for most relevant Vulkan objects
 pub struct VulkanObjects {
     pub instance: Instance,
     pub physical_device: vk::PhysicalDevice,
@@ -11,12 +12,13 @@ pub struct VulkanObjects {
     pub command_pool: vk::CommandPool,
 }
 
+/// Handles for pipeline objects
 #[derive(Debug)]
-pub struct PipelineObjects {
+pub struct Pipeline {
+    pub handle: vk::Pipeline,
+    pub layout: vk::PipelineLayout,
+    pub cache: vk::PipelineCache,
     pub shader_module: vk::ShaderModule,
-    pub pipeline_layout: vk::PipelineLayout,
-    pub pipeline_cache: vk::PipelineCache,
-    pub pipeline: vk::Pipeline,
 }
 
 fn load_shader(source_file: &str) -> Result<Vec<u32>> {
@@ -30,6 +32,7 @@ fn load_shader(source_file: &str) -> Result<Vec<u32>> {
         .map_err(|_| Error::msg(format!("Failed to read spirv from file {}", source_file)))
 }
 
+/// Performs all required setup to initialize a compute queue. Returns the associated Vulkan handles.
 pub fn setup_basic_compute(
     app_name: &CStr,
     api_version: u32,
@@ -137,11 +140,12 @@ pub fn setup_basic_compute(
     })
 }
 
+///
 pub fn setup_compute_pipeline(
     device: Device,
     source_file: &str,
     descriptor_set_layouts: &[vk::DescriptorSetLayout],
-) -> Result<PipelineObjects> {
+) -> Result<Pipeline> {
     // Create a unique shader module. Use the load_shader() function to load compiled SPIR-V code
     // from the shader source file.
     let shader_module = {
@@ -185,10 +189,10 @@ pub fn setup_compute_pipeline(
         }
     };
 
-    Ok(PipelineObjects {
+    Ok(Pipeline {
+        handle: pipeline,
+        layout: pipeline_layout,
+        cache: pipeline_cache,
         shader_module,
-        pipeline_layout,
-        pipeline_cache,
-        pipeline,
     })
 }

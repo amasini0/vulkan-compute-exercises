@@ -1,6 +1,6 @@
 use anyhow::Result;
 use ash::vk;
-use framework::{self, PipelineObjects, VulkanObjects};
+use framework::{self, VulkanObjects};
 use std::env;
 
 fn main() -> Result<()> {
@@ -34,12 +34,8 @@ fn main() -> Result<()> {
         unsafe { device.create_descriptor_set_layout(&create_info, None)? }
     }; 1];
 
-    let PipelineObjects {
-        shader_module: _,
-        pipeline_layout: _,
-        pipeline_cache: _,
-        pipeline,
-    } = framework::setup_compute_pipeline(device.clone(), &source_file, &descriptor_set_layouts)?;
+    let pipeline =
+        framework::setup_compute_pipeline(device.clone(), &source_file, &descriptor_set_layouts)?;
 
     // Create command buffer and register commands
     let command_buffers = {
@@ -54,7 +50,11 @@ fn main() -> Result<()> {
     // Register commands in command buffer and dispatch
     unsafe {
         device.begin_command_buffer(command_buffers[0], &vk::CommandBufferBeginInfo::default())?;
-        device.cmd_bind_pipeline(command_buffers[0], vk::PipelineBindPoint::COMPUTE, pipeline);
+        device.cmd_bind_pipeline(
+            command_buffers[0],
+            vk::PipelineBindPoint::COMPUTE,
+            pipeline.handle,
+        );
         device.cmd_dispatch(command_buffers[0], 4, 1, 1);
         device.end_command_buffer(command_buffers[0])?;
     }
