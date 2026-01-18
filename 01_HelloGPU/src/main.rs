@@ -60,12 +60,11 @@ fn main() -> Result<()> {
     }
 
     // Submit command buffer to queue
-    let submit_info = [vk::SubmitInfo::default(); 1];
     unsafe {
-        let create_info = vk::FenceCreateInfo::default();
-        let fence = device.create_fence(&create_info, None)?;
-        device.queue_submit(queue, &submit_info, fence)?;
-        device.wait_for_fences(&[fence; 1], true, 10000)?;
+        let submit_infos = [vk::SubmitInfo::default()
+            .command_buffers(&command_buffers); 1];
+        device.queue_submit(queue, &submit_infos, vk::Fence::null())?;
+        device.device_wait_idle()?;
     }
 
     Ok(())
