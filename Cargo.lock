@@ -41,6 +41,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "e02_uniform_buffer"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "ash",
+ "framework",
+]
+
+[[package]]
 name = "framework"
 version = "0.1.0"
 dependencies = [

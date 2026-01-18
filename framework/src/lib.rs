@@ -196,3 +196,21 @@ pub fn setup_compute_pipeline(
         shader_module,
     })
 }
+
+/// Returns the index for the first memory type that satisfies the provided memory requirements and
+/// property flags.
+pub fn find_memory_type_idx(
+    memory_types: &[vk::MemoryType],
+    requirements: vk::MemoryRequirements,
+    flags: vk::MemoryPropertyFlags,
+) -> Option<u32> {
+    memory_types
+        .iter()
+        .enumerate()
+        .find(|(i, mem_type)| {
+            let is_supported_type = requirements.memory_type_bits & (1 << i) != 0;
+            let has_requested_flags = mem_type.property_flags.contains(flags);
+            is_supported_type && has_requested_flags
+        })
+        .map(|(i, _)| i as _)
+}
