@@ -1,12 +1,13 @@
 [package]
-name = "e00_my_gpu"
+name = "e02_uniform_buffer"
 version = "0.1.0"
 edition = "2024"
 
 [dependencies]
 anyhow = "1.0.100"
 ash = { version = "0.38.0", features = ["linked"] }
+framework = { version = "0.1.0", path = "../framework" }
 
 [[bin]]
-name = "00_MyGPU"
+name = "02_UniformBuffer"
 path = "src/main.rs"

@@ -1,5 +1,5 @@
 [package]
-name = "e01_HelloGPU"
+name = "e01_hello_gpu"
 version = "0.1.0"
 edition = "2024"
 
