@@ -36,8 +36,8 @@ fn load_shader(source_file: &str) -> Result<Vec<u32>> {
 pub fn setup_basic_compute(
     app_name: &CStr,
     api_version: u32,
-    instance_extensions: Option<&[*const c_char]>,
-    device_extensions: Option<&[*const c_char]>,
+    instance_extensions: &[*const c_char],
+    device_extensions: &[*const c_char],
 ) -> Result<VulkanObjects> {
     // Entrypoint
     let entry = Entry::linked();
@@ -48,14 +48,9 @@ pub fn setup_basic_compute(
         let app_info = vk::ApplicationInfo::default()
             .application_name(app_name)
             .api_version(api_version);
-
-        let create_info = match instance_extensions {
-            Some(extensions) => vk::InstanceCreateInfo::default()
-                .application_info(&app_info)
-                .enabled_extension_names(extensions),
-            None => vk::InstanceCreateInfo::default().application_info(&app_info),
-        };
-
+        let create_info = vk::InstanceCreateInfo::default()
+            .application_info(&app_info)
+            .enabled_extension_names(instance_extensions);
         unsafe { entry.create_instance(&create_info, None)? }
     };
 
@@ -101,12 +96,9 @@ pub fn setup_basic_compute(
             .queue_family_index(qfam_idx as u32)
             .queue_priorities(&queue_priorities); 1];
 
-        let device_create_info = match device_extensions {
-            Some(extensions) => vk::DeviceCreateInfo::default()
-                .queue_create_infos(&queue_create_info)
-                .enabled_extension_names(extensions),
-            None => vk::DeviceCreateInfo::default().queue_create_infos(&queue_create_info),
-        };
+        let device_create_info = vk::DeviceCreateInfo::default()
+            .queue_create_infos(&queue_create_info)
+            .enabled_extension_names(device_extensions);
 
         let device = unsafe {
             instance

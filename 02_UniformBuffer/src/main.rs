@@ -18,7 +18,7 @@ fn main() -> Result<()> {
     } = {
         let app_name = c"Task 2";
         let api_version = vk::make_api_version(0, 1, 4, 0);
-        framework::setup_basic_compute(app_name, api_version, None, None)?
+        framework::setup_basic_compute(app_name, api_version, &[], &[])?
     };
 
     // Print physical device info

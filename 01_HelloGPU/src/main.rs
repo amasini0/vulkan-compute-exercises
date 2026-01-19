@@ -17,7 +17,7 @@ fn main() -> Result<()> {
     } = {
         let app_name = c"Task 1";
         let api_version = vk::make_api_version(0, 1, 4, 0);
-        framework::setup_basic_compute(app_name, api_version, None, None)?
+        framework::setup_basic_compute(app_name, api_version, &[], &[])?
     };
 
     // Print device name
@@ -61,8 +61,7 @@ fn main() -> Result<()> {
 
     // Submit command buffer to queue
     unsafe {
-        let submit_infos = [vk::SubmitInfo::default()
-            .command_buffers(&command_buffers); 1];
+        let submit_infos = [vk::SubmitInfo::default().command_buffers(&command_buffers); 1];
         device.queue_submit(queue, &submit_infos, vk::Fence::null())?;
         device.device_wait_idle()?;
     }
