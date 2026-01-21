@@ -1,0 +1,15 @@
+[package]
+name = "e03_storage_buffer"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = "1.0.100"
+ash = { version = "0.38.0", features = ["linked"] }
+framework = { version = "0.1.0", path = "../framework" }
+futures = { version = "0.3.31", features = ["thread-pool"] }
+
+
+[[bin]]
+name = "03_StorageBuffer"
+path = "src/main.rs"
