@@ -28,6 +28,12 @@ fn main() -> Result<()> {
     let device_name = device_props2.properties.device_name_as_c_str()?;
     println!("Device name: {:?}", device_name);
 
+    // Add warning for debug printf
+    println!("\n============================= WARNING ==============================");
+    println!("If you can't see any message printed below, make sure the Validation");
+    println!("layer is enabled in Vulkan configurator, and Debug Printf is active.");
+    println!("====================================================================\n");
+
     // Create a buffer binding for the buffer you want to read from in the shader.
     // You can use any binding index you want, just make sure that it matches your
     // definitions in the shader (you can just use 0 in both places).

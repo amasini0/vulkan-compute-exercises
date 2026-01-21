@@ -27,6 +27,12 @@ fn main() -> Result<()> {
     let name = device_props2.properties.device_name_as_c_str()?;
     println!("Device name: {:?}", name);
 
+    // Add warning for debug printf
+    println!("\n============================= WARNING ==============================");
+    println!("If you can't see any message printed below, make sure the Validation");
+    println!("layer is enabled in Vulkan configurator, and Debug Printf is active.");
+    println!("====================================================================\n");
+
     // Create compute pipeline
     let source_file = format!("{}/hello.spv", env::var("OUT_DIR")?);
     let descriptor_set_layouts = [{
