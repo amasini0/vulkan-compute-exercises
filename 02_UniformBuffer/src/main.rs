@@ -1,5 +1,5 @@
 use anyhow::{Result, anyhow};
-use ash::vk;
+use ash::{Entry, vk};
 use framework;
 use std::env;
 use std::slice;
@@ -9,10 +9,11 @@ fn main() -> Result<()> {
     println!("\n{} starting...\n", program);
 
     // Setup a compute context.
+    let entry = unsafe { Entry::load()? };
     let context = {
         let app_name = c"Task 2";
         let api_version = vk::make_api_version(0, 1, 4, 0);
-        framework::setup_compute_context(app_name, api_version, &[], &[])?
+        framework::setup_compute_context(&entry, app_name, api_version, &[], &[])?
     };
 
     // Print selected physical device name.

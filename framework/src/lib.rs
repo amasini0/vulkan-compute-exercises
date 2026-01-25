@@ -4,7 +4,8 @@ use std::ffi::{CStr, c_char};
 use std::fs::File;
 
 /// Handles for GPU context-related objects
-pub struct Context {
+pub struct Context<'a> {
+    _entry: &'a Entry,
     pub instance: Instance,
     pub physical_device: vk::PhysicalDevice,
     pub device: Device,
@@ -12,7 +13,7 @@ pub struct Context {
     pub command_pool: vk::CommandPool,
 }
 
-impl Drop for Context {
+impl<'a> Drop for Context<'a> {
     fn drop(&mut self) {
         unsafe {
             self.device.destroy_command_pool(self.command_pool, None);
@@ -53,15 +54,13 @@ fn load_shader(source_file: &str) -> Result<Vec<u32>> {
 
 /// Sets up a GPU compute context on the first available physical device that supports it.
 /// If successful, returns a Context structure containing all Vulkan context-related objects.
-pub fn setup_compute_context(
+pub fn setup_compute_context<'a>(
+    entry: &'a Entry,
     app_name: &CStr,
     api_version: u32,
     instance_extensions: &[*const c_char],
     device_extensions: &[*const c_char],
-) -> Result<Context> {
-    // Entrypoint
-    let entry = Entry::linked();
-
+) -> Result<Context<'a>> {
     // Create a unique instance. For that, prepare an app info with the given name and API version.
     // It should enable all extensions provided in extensions_instance.
     let instance = {
@@ -143,6 +142,7 @@ pub fn setup_compute_context(
     };
 
     Ok(Context {
+        _entry: entry,
         instance,
         physical_device,
         device,

@@ -7,7 +7,7 @@ fn main() -> Result<()> {
     println!("\n{} starting...\n", args[0]);
 
     // Get Vulkan entrypoint
-    let entry = Entry::linked();
+    let entry = unsafe { Entry::load()? };
 
     // Create instance
     let instance = {
