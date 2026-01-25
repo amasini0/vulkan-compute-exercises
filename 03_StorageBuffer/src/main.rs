@@ -1,6 +1,6 @@
 use anyhow::{Result, anyhow};
 use ash::vk;
-use framework::{self, VulkanObjects};
+use framework;
 use std::env;
 use std::slice;
 
@@ -8,20 +8,21 @@ fn main() -> Result<()> {
     let program = env::args().into_iter().next().unwrap();
     println!("\n{} starting...\n", program);
 
-    let VulkanObjects {
-        instance,
-        physical_device,
-        device,
-        queue,
-        command_pool,
-    } = {
+    // Set up a compute context.
+    let context = {
         let app_name = c"Task 3";
         let api_version = vk::make_api_version(0, 1, 4, 0);
-        framework::setup_basic_compute(&app_name, api_version, &[], &[])?
+        framework::setup_compute_context(&app_name, api_version, &[], &[])?
     };
+
+    // Print selected physical device name.
+    let instance = &context.instance;
+    let device_props = unsafe { instance.get_physical_device_properties(context.physical_device) };
+    println!("Device name: {:?}\n", device_props.device_name_as_c_str()?);
 
     // Create a unique descriptor set layout.
     // It should have a single storage buffer at some binding index.
+    let device = &context.device;
     let descriptor_set_layouts = [{
         let layout_bindings = [vk::DescriptorSetLayoutBinding::default()
             .binding(0)
@@ -35,10 +36,10 @@ fn main() -> Result<()> {
     // Create pipeline from source file and descriptor set layouts
     let pipeline_objects = {
         let source_file = format!("{}/fibonacci.spv", env::var("OUT_DIR")?);
-        framework::setup_compute_pipeline(device.clone(), &source_file, &descriptor_set_layouts)?
+        framework::setup_compute_pipeline(device, &source_file, &descriptor_set_layouts)?
     };
 
-    // TODO: We will want a resource to put in our descriptor set. A single storage buffer is needed.
+    // We will want a resource to put in our descriptor set. A single storage buffer is needed.
     // The buffer should have enough room to store 32 integers. The memory we use for the buffer
     // should device-local, but also be visible to the host and host-coherent so we can write to it
     // from the CPU. Once the buffer is created, you will have to (in addition):
@@ -47,21 +48,21 @@ fn main() -> Result<()> {
     // 3) Allocate a large enough chunk of it to store the data
     // 4) Bind the memory to the buffer
     let buffer_length = 32;
-    let buffer_size = buffer_length * size_of::<i32>();
     let (buffer_handle, buffer_memory) = {
-        // Create buffer object
+        let buffer_size = (buffer_length * size_of::<i32>()) as vk::DeviceSize;
         let create_info = vk::BufferCreateInfo::default()
             .size(buffer_size as vk::DeviceSize)
             .usage(vk::BufferUsageFlags::STORAGE_BUFFER)
             .sharing_mode(vk::SharingMode::EXCLUSIVE);
         let buffer_handle = unsafe { device.create_buffer(&create_info, None)? };
 
-        // Find suitable memory type for buffer
+        // Find a suitable memory type for the buffer.
         let buffer_mem_reqs = unsafe { device.get_buffer_memory_requirements(buffer_handle) };
         let buffer_mem_flags = vk::MemoryPropertyFlags::DEVICE_LOCAL
             | vk::MemoryPropertyFlags::HOST_VISIBLE
             | vk::MemoryPropertyFlags::HOST_COHERENT;
-        let mem_props = unsafe { instance.get_physical_device_memory_properties(physical_device) };
+        let mem_props =
+            unsafe { instance.get_physical_device_memory_properties(context.physical_device) };
         let mem_type_idx = framework::find_memory_type_idx(
             &mem_props.memory_types,
             buffer_mem_reqs,
@@ -71,9 +72,9 @@ fn main() -> Result<()> {
             "No suitable memory type for buffer allocation found."
         ))?;
 
-        // Allocate memory and bind to buffer handle
+        // Allocate memory and bind it to the buffer handle.
         let allocate_info = vk::MemoryAllocateInfo::default()
-            .allocation_size(buffer_size as vk::DeviceSize)
+            .allocation_size(buffer_mem_reqs.size)
             .memory_type_index(mem_type_idx);
         let buffer_memory = unsafe { device.allocate_memory(&allocate_info, None)? };
         unsafe { device.bind_buffer_memory(buffer_handle, buffer_memory, 0)? };
@@ -117,22 +118,23 @@ fn main() -> Result<()> {
         unsafe { device.update_descriptor_sets(&descriptor_writes, &[]) };
     }
 
-    // Create command buffer and dispatch compute shader
+    // Allocate a command buffer from the command pool.
     let command_buffers = {
         let allocate_info = vk::CommandBufferAllocateInfo::default()
-            .command_pool(command_pool)
+            .command_pool(context.command_pool)
             .level(vk::CommandBufferLevel::PRIMARY)
             .command_buffer_count(1);
         unsafe { device.allocate_command_buffers(&allocate_info)? }
     };
 
+    // Register commands in the command buffer, submit the command buffer to the compute queue,
+    // then wait for completion on device.
     unsafe {
+        let begin_info = vk::CommandBufferBeginInfo::default();
         let command_buffer = command_buffers[0];
-
         let bind_point = vk::PipelineBindPoint::COMPUTE;
         let pipeline_handle = pipeline_objects.handle;
         let pipeline_layout = pipeline_objects.layout;
-
         let buffer_memory_barriers = [vk::BufferMemoryBarrier::default()
             .src_access_mask(vk::AccessFlags::MEMORY_WRITE)
             .dst_access_mask(vk::AccessFlags::HOST_READ)
@@ -140,7 +142,6 @@ fn main() -> Result<()> {
             .offset(0)
             .size(vk::WHOLE_SIZE); 1];
 
-        let begin_info = vk::CommandBufferBeginInfo::default();
         device.begin_command_buffer(command_buffer, &begin_info)?;
         device.cmd_bind_pipeline(command_buffer, bind_point, pipeline_handle);
         device.cmd_bind_descriptor_sets(
@@ -164,11 +165,11 @@ fn main() -> Result<()> {
         device.end_command_buffer(command_buffer)?;
 
         let submit_infos = [vk::SubmitInfo::default().command_buffers(&command_buffers); 1];
-        device.queue_submit(queue, &submit_infos, vk::Fence::null())?;
+        device.queue_submit(context.queue, &submit_infos, vk::Fence::null())?;
         device.device_wait_idle()?;
     }
 
-    // Access data on host
+    // Access buffer data on host.
     unsafe {
         let map_flags = vk::MemoryMapFlags::default();
         slice::from_raw_parts(
@@ -180,7 +181,15 @@ fn main() -> Result<()> {
     }
     .iter()
     .enumerate()
-    .for_each(|(n, fib)| println!("{:<2} : {:<}", n, fib));
+    .for_each(|(n, fib)| println!("{:>4} : {:<}", n, fib));
+
+    // Destroy manually created objects.
+    unsafe {
+        device.destroy_descriptor_pool(descriptor_pool, None);
+        device.destroy_buffer(buffer_handle, None);
+        device.free_memory(buffer_memory, None);
+        device.destroy_descriptor_set_layout(descriptor_set_layouts[0], None);
+    }
 
     Ok(())
 }

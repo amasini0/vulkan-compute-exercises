@@ -1,39 +1,32 @@
 use anyhow::Result;
 use ash::vk;
-use framework::{self, VulkanObjects};
+use framework;
 use std::env;
 
 fn main() -> Result<()> {
     let program = env::args().next().unwrap(); // first argument always available
     println!("\n{} starting...\n", program);
 
-    // Set up Vulkan environment
-    let VulkanObjects {
-        instance,
-        physical_device,
-        device,
-        queue,
-        command_pool,
-    } = {
+    // Setup a compute context.
+    let context = {
         let app_name = c"Task 1";
         let api_version = vk::make_api_version(0, 1, 4, 0);
-        framework::setup_basic_compute(app_name, api_version, &[], &[])?
+        framework::setup_compute_context(app_name, api_version, &[], &[])?
     };
 
-    // Print device name
-    let mut device_props2 = vk::PhysicalDeviceProperties2::default();
-    unsafe { instance.get_physical_device_properties2(physical_device, &mut device_props2) };
+    // Print selected physical device name.
+    let instance = &context.instance;
+    let device_props = unsafe { instance.get_physical_device_properties(context.physical_device) };
+    println!("Device name: {:?}\n", device_props.device_name_as_c_str());
 
-    let name = device_props2.properties.device_name_as_c_str()?;
-    println!("Device name: {:?}", name);
-
-    // Add warning for debug printf
-    println!("\n============================= WARNING ==============================");
+    // Print a warning to remind activation of debug printf.
+    println!("============================= WARNING ==============================");
     println!("If you can't see any message printed below, make sure the Validation");
     println!("layer is enabled in Vulkan configurator, and Debug Printf is active.");
     println!("====================================================================\n");
 
-    // Create compute pipeline
+    // Set up a simple compute pipeline.
+    let device = &context.device;
     let source_file = format!("{}/hello.spv", env::var("OUT_DIR")?);
     let descriptor_set_layouts = [{
         let create_info = vk::DescriptorSetLayoutCreateInfo::default();
@@ -41,35 +34,40 @@ fn main() -> Result<()> {
     }; 1];
 
     let pipeline =
-        framework::setup_compute_pipeline(device.clone(), &source_file, &descriptor_set_layouts)?;
+        framework::setup_compute_pipeline(device, &source_file, &descriptor_set_layouts)?;
 
-    // Create command buffer and register commands
+    // Allocate a command buffer from the command pool.
     let command_buffers = {
         let allocate_info = vk::CommandBufferAllocateInfo::default()
-            .command_pool(command_pool)
+            .command_pool(context.command_pool)
             .level(vk::CommandBufferLevel::PRIMARY)
             .command_buffer_count(1);
-
         unsafe { device.allocate_command_buffers(&allocate_info)? }
     };
 
-    // Register commands in command buffer and dispatch
+    // Register commands in the command buffer, submit the command buffer to the compute queue,
+    // then wait for completion on device.
     unsafe {
-        device.begin_command_buffer(command_buffers[0], &vk::CommandBufferBeginInfo::default())?;
+        let begin_info = vk::CommandBufferBeginInfo::default();
+        let command_buffer = command_buffers[0];
+
+        device.begin_command_buffer(command_buffer, &begin_info)?;
         device.cmd_bind_pipeline(
-            command_buffers[0],
+            command_buffer,
             vk::PipelineBindPoint::COMPUTE,
             pipeline.handle,
         );
-        device.cmd_dispatch(command_buffers[0], 4, 1, 1);
-        device.end_command_buffer(command_buffers[0])?;
+        device.cmd_dispatch(command_buffer, 4, 1, 1);
+        device.end_command_buffer(command_buffer)?;
+
+        let submit_infos = [vk::SubmitInfo::default().command_buffers(&command_buffers); 1];
+        device.queue_submit(context.queue, &submit_infos, vk::Fence::null())?;
+        device.device_wait_idle()?;
     }
 
-    // Submit command buffer to queue
+    // Destroy manually created objects.
     unsafe {
-        let submit_infos = [vk::SubmitInfo::default().command_buffers(&command_buffers); 1];
-        device.queue_submit(queue, &submit_infos, vk::Fence::null())?;
-        device.device_wait_idle()?;
+        device.destroy_descriptor_set_layout(descriptor_set_layouts[0], None);
     }
 
     Ok(())

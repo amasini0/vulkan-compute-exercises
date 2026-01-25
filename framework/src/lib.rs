@@ -1,10 +1,10 @@
-use anyhow::{Error, Result};
+use anyhow::{Result, anyhow};
 use ash::{Device, Entry, Instance, vk};
 use std::ffi::{CStr, c_char};
 use std::fs::File;
 
-/// Handles for most relevant Vulkan objects
-pub struct VulkanObjects {
+/// Handles for GPU context-related objects
+pub struct Context {
     pub instance: Instance,
     pub physical_device: vk::PhysicalDevice,
     pub device: Device,
@@ -12,33 +12,53 @@ pub struct VulkanObjects {
     pub command_pool: vk::CommandPool,
 }
 
-/// Handles for pipeline objects
-#[derive(Debug)]
-pub struct Pipeline {
+impl Drop for Context {
+    fn drop(&mut self) {
+        unsafe {
+            self.device.destroy_command_pool(self.command_pool, None);
+            self.device.destroy_device(None);
+            self.instance.destroy_instance(None);
+        }
+    }
+}
+
+/// Handles for pipeline-related objects
+pub struct Pipeline<'a> {
+    device: &'a Device,
     pub handle: vk::Pipeline,
     pub layout: vk::PipelineLayout,
     pub cache: vk::PipelineCache,
     pub shader_module: vk::ShaderModule,
 }
 
-fn load_shader(source_file: &str) -> Result<Vec<u32>> {
-    // Open file stream
-    let mut file = match File::open(source_file) {
-        Ok(file) => file,
-        Err(_) => return Err(Error::msg(format!("Failed to open file {}", source_file))),
-    };
-
-    ash::util::read_spv(&mut file)
-        .map_err(|_| Error::msg(format!("Failed to read spirv from file {}", source_file)))
+impl<'a> Drop for Pipeline<'a> {
+    fn drop(&mut self) {
+        unsafe {
+            self.device.destroy_pipeline(self.handle, None);
+            self.device.destroy_pipeline_cache(self.cache, None);
+            self.device.destroy_pipeline_layout(self.layout, None);
+            self.device.destroy_shader_module(self.shader_module, None);
+        }
+    }
 }
 
-/// Performs all required setup to initialize a compute queue. Returns the associated Vulkan handles.
-pub fn setup_basic_compute(
+fn load_shader(source_file: &str) -> Result<Vec<u32>> {
+    let mut file = File::open(source_file)
+        .map_err(|_| anyhow!(format!("Failed to open file {}", source_file)))?;
+
+    // Read spirv from open file.
+    ash::util::read_spv(&mut file)
+        .map_err(|_| anyhow!(format!("Failed to read spirv from file {}", source_file)))
+}
+
+/// Sets up a GPU compute context on the first available physical device that supports it.
+/// If successful, returns a Context structure containing all Vulkan context-related objects.
+pub fn setup_compute_context(
     app_name: &CStr,
     api_version: u32,
     instance_extensions: &[*const c_char],
     device_extensions: &[*const c_char],
-) -> Result<VulkanObjects> {
+) -> Result<Context> {
     // Entrypoint
     let entry = Entry::linked();
 
@@ -59,10 +79,9 @@ pub fn setup_basic_compute(
     let devices = unsafe { instance.enumerate_physical_devices()? };
 
     let find_suitable_queue_family =
-        |device: &vk::PhysicalDevice| -> Option<(vk::PhysicalDevice, usize)> {
-            let num_families = unsafe {
-                instance.get_physical_device_queue_family_properties2_len(device.clone())
-            };
+        |device: vk::PhysicalDevice| -> Option<(vk::PhysicalDevice, usize)> {
+            let num_families =
+                unsafe { instance.get_physical_device_queue_family_properties2_len(device) };
             let mut queue_families = vec![vk::QueueFamilyProperties2::default(); num_families];
             unsafe {
                 instance.get_physical_device_queue_family_properties2(
@@ -80,11 +99,11 @@ pub fn setup_basic_compute(
             None
         };
 
-    let (physical_device, qfam_idx) =
-        match devices.iter().filter_map(find_suitable_queue_family).next() {
-            Some((physical_device, qfam_idx)) => (physical_device, qfam_idx),
-            None => return Err(Error::msg("No suitable device found")),
-        };
+    let (physical_device, qfam_idx) = devices
+        .into_iter()
+        .filter_map(find_suitable_queue_family)
+        .next()
+        .ok_or(anyhow!("No suitable device found"))?;
 
     // Create a unique (logical) device from the physical device.
     // The device should be created with a single queue from the family you identified above. The
@@ -102,8 +121,8 @@ pub fn setup_basic_compute(
 
         let device = unsafe {
             instance
-                .create_device(physical_device.clone(), &device_create_info, None)
-                .map_err(|_| Error::msg("Failed to create logical device"))?
+                .create_device(physical_device, &device_create_info, None)
+                .map_err(|_| anyhow!("Failed to create logical device"))?
         };
 
         let queue = unsafe { device.get_device_queue(qfam_idx as u32, 0) };
@@ -123,7 +142,7 @@ pub fn setup_basic_compute(
         unsafe { device.create_command_pool(&create_info, None)? }
     };
 
-    Ok(VulkanObjects {
+    Ok(Context {
         instance,
         physical_device,
         device,
@@ -132,12 +151,13 @@ pub fn setup_basic_compute(
     })
 }
 
-///
-pub fn setup_compute_pipeline(
-    device: Device,
+/// Sets up a compute pipeline on the given device using the provided shaders and layout bindings.
+/// If successful, returns a Pipeline struct containing all the pipeline-related objects.
+pub fn setup_compute_pipeline<'a>(
+    device: &'a Device,
     source_file: &str,
     descriptor_set_layouts: &[vk::DescriptorSetLayout],
-) -> Result<Pipeline> {
+) -> Result<Pipeline<'a>> {
     // Create a unique shader module. Use the load_shader() function to load compiled SPIR-V code
     // from the shader source file.
     let shader_module = {
@@ -177,11 +197,12 @@ pub fn setup_compute_pipeline(
 
         match unsafe { device.create_compute_pipelines(pipeline_cache, &create_infos, None) } {
             Ok(pipelines) => pipelines[0],
-            Err(_) => return Err(Error::msg("Failed to create compute pipeline")),
+            Err(_) => Err(anyhow!("Failed to create compute pipeline"))?,
         }
     };
 
     Ok(Pipeline {
+        device,
         handle: pipeline,
         layout: pipeline_layout,
         cache: pipeline_cache,

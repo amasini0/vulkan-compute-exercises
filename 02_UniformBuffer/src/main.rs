@@ -1,6 +1,6 @@
-use anyhow::{Error, Result};
+use anyhow::{Result, anyhow};
 use ash::vk;
-use framework::{self, VulkanObjects};
+use framework;
 use std::env;
 use std::slice;
 
@@ -8,28 +8,20 @@ fn main() -> Result<()> {
     let program = env::args().into_iter().next().unwrap();
     println!("\n{} starting...\n", program);
 
-    // Get Vulkan objects
-    let VulkanObjects {
-        instance,
-        physical_device,
-        device,
-        queue,
-        command_pool,
-    } = {
+    // Setup a compute context.
+    let context = {
         let app_name = c"Task 2";
         let api_version = vk::make_api_version(0, 1, 4, 0);
-        framework::setup_basic_compute(app_name, api_version, &[], &[])?
+        framework::setup_compute_context(app_name, api_version, &[], &[])?
     };
 
-    // Print physical device info
-    let mut device_props2 = vk::PhysicalDeviceProperties2::default();
-    unsafe { instance.get_physical_device_properties2(physical_device, &mut device_props2) };
+    // Print selected physical device name.
+    let instance = &context.instance;
+    let device_props = unsafe { instance.get_physical_device_properties(context.physical_device) };
+    println!("Device name: {:?}\n", device_props.device_name_as_c_str());
 
-    let device_name = device_props2.properties.device_name_as_c_str()?;
-    println!("Device name: {:?}", device_name);
-
-    // Add warning for debug printf
-    println!("\n============================= WARNING ==============================");
+    // Print a warning to remind activation of debug printf.
+    println!("============================= WARNING ==============================");
     println!("If you can't see any message printed below, make sure the Validation");
     println!("layer is enabled in Vulkan configurator, and Debug Printf is active.");
     println!("====================================================================\n");
@@ -47,6 +39,8 @@ fn main() -> Result<()> {
 
     // Create a unique descriptor set layout to organize your bindings (you only have one).
     // The layouts are sent to the pipeline so it knows how the descriptor sets bound to it look.
+    // Set up a compute pipeline using the previously created descriptor set layout.
+    let device = &context.device;
     let source_file = format!("{}/print.spv", env::var("OUT_DIR")?);
     let descriptor_set_layouts = [{
         let create_info = vk::DescriptorSetLayoutCreateInfo::default().bindings(&layout_bindings);
@@ -54,7 +48,7 @@ fn main() -> Result<()> {
     }; 1];
 
     let pipeline =
-        framework::setup_compute_pipeline(device.clone(), &source_file, &descriptor_set_layouts)?;
+        framework::setup_compute_pipeline(device, &source_file, &descriptor_set_layouts)?;
 
     // We will want a resource to put in our descriptor set.
     // A single uniform buffer is needed The buffer should have enough room to store 3 integers.
@@ -66,7 +60,7 @@ fn main() -> Result<()> {
     // 3) Allocate a large enough chunk of it to store the data
     // 4) Bind the memory to the buffer
     let buffer_length = 3;
-    let (buffer, buffer_memory) = {
+    let (buffer_handle, buffer_memory) = {
         let buffer_size = (buffer_length * size_of::<i32>()) as vk::DeviceSize;
         let create_info = vk::BufferCreateInfo::default()
             .size(buffer_size)
@@ -74,25 +68,23 @@ fn main() -> Result<()> {
             .sharing_mode(vk::SharingMode::EXCLUSIVE);
         let buffer_handle = unsafe { device.create_buffer(&create_info, None)? };
 
-        // Get memory requirements and memory properties required for resource allocation
+        // Find a suitable memory type for the buffer.
         let buffer_mem_reqs = unsafe { device.get_buffer_memory_requirements(buffer_handle) };
         let buffer_mem_flags = vk::MemoryPropertyFlags::DEVICE_LOCAL
             | vk::MemoryPropertyFlags::HOST_VISIBLE
             | vk::MemoryPropertyFlags::HOST_COHERENT;
-
-        // Find suitable memory type
         let device_mem_props =
-            unsafe { instance.get_physical_device_memory_properties(physical_device) };
+            unsafe { instance.get_physical_device_memory_properties(context.physical_device) };
         let mem_type_idx = framework::find_memory_type_idx(
             &device_mem_props.memory_types,
             buffer_mem_reqs,
             buffer_mem_flags,
         )
-        .ok_or(Error::msg(
-            "No suitable memory type for buffer allocation found.",
+        .ok_or(anyhow!(
+            "No suitable memory type for buffer allocation found."
         ))?;
 
-        // Perform memory allocation and bind memory to buffer
+        // Allocate memory and bind it to the buffer handle.
         let allocate_info = vk::MemoryAllocateInfo::default()
             .allocation_size(buffer_mem_reqs.size)
             .memory_type_index(mem_type_idx);
@@ -158,7 +150,7 @@ fn main() -> Result<()> {
     // We are only doing writes, so no (0) copies should be passed.
     {
         let descriptor_buffer_infos = [vk::DescriptorBufferInfo::default()
-            .buffer(buffer)
+            .buffer(buffer_handle)
             .offset(0)
             .range(vk::WHOLE_SIZE); 1];
 
@@ -172,7 +164,7 @@ fn main() -> Result<()> {
         unsafe { device.update_descriptor_sets(&descriptor_writes, &[]) }
     }
 
-    // Create command buffer and register commands.
+    // Allocate a command buffer from the command pool.
     //
     // Bind your descriptor set before dispatching a compute job that needs it.
     // It should be bound to the "compute" pipeline bind point. Use your pipeline's layout.
@@ -180,19 +172,22 @@ fn main() -> Result<()> {
     // (and only) entry from your vector of descriptor sets. We don't use dynamic offsets.
     let command_buffers = {
         let allocate_info = vk::CommandBufferAllocateInfo::default()
-            .command_pool(command_pool)
+            .command_pool(context.command_pool)
             .level(vk::CommandBufferLevel::PRIMARY)
             .command_buffer_count(1);
         unsafe { device.allocate_command_buffers(&allocate_info)? }
     };
 
+    // Register commands in the command buffer, submit the command buffer to the compute queue,
+    // then wait for completion on device.
     unsafe {
+        let begin_info = vk::CommandBufferBeginInfo::default();
         let command_buffer = command_buffers[0];
         let bind_point = vk::PipelineBindPoint::COMPUTE;
         let handle = pipeline.handle;
         let layout = pipeline.layout;
 
-        device.begin_command_buffer(command_buffer, &vk::CommandBufferBeginInfo::default())?;
+        device.begin_command_buffer(command_buffer, &begin_info)?;
         device.cmd_bind_pipeline(command_buffer, bind_point, handle);
         device.cmd_bind_descriptor_sets(
             command_buffer,
@@ -204,13 +199,18 @@ fn main() -> Result<()> {
         );
         device.cmd_dispatch(command_buffer, 8, 1, 1);
         device.end_command_buffer(command_buffer)?;
+
+        let submit_infos = [vk::SubmitInfo::default().command_buffers(&command_buffers); 1];
+        device.queue_submit(context.queue, &submit_infos, vk::Fence::null())?;
+        device.device_wait_idle()?;
     }
 
-    // Submit command buffer
+    // Destroy manually created objects.
     unsafe {
-        let submit_infos = [vk::SubmitInfo::default().command_buffers(&command_buffers); 1];
-        device.queue_submit(queue, &submit_infos, vk::Fence::null())?;
-        device.device_wait_idle()?;
+        device.destroy_descriptor_pool(descriptor_pool, None);
+        device.free_memory(buffer_memory, None);
+        device.destroy_buffer(buffer_handle, None);
+        device.destroy_descriptor_set_layout(descriptor_set_layouts[0], None);
     }
 
     Ok(())
