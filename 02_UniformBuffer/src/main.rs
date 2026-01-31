@@ -41,15 +41,14 @@ fn main() -> Result<()> {
     // Create a unique descriptor set layout to organize your bindings (you only have one).
     // The layouts are sent to the pipeline so it knows how the descriptor sets bound to it look.
     // Set up a compute pipeline using the previously created descriptor set layout.
-    let device = &context.device;
     let source_file = format!("{}/print.spv", env::var("OUT_DIR")?);
     let descriptor_set_layouts = [{
         let create_info = vk::DescriptorSetLayoutCreateInfo::default().bindings(&layout_bindings);
-        unsafe { device.create_descriptor_set_layout(&create_info, None)? }
+        unsafe { context.create_descriptor_set_layout(&create_info, None)? }
     }; 1];
 
     let pipeline =
-        framework::setup_compute_pipeline(device, &source_file, &descriptor_set_layouts)?;
+        framework::create_compute_pipeline(&context, &source_file, &descriptor_set_layouts)?;
 
     // We will want a resource to put in our descriptor set.
     // A single uniform buffer is needed The buffer should have enough room to store 3 integers.
@@ -67,10 +66,10 @@ fn main() -> Result<()> {
             .size(buffer_size)
             .usage(vk::BufferUsageFlags::UNIFORM_BUFFER)
             .sharing_mode(vk::SharingMode::EXCLUSIVE);
-        let buffer_handle = unsafe { device.create_buffer(&create_info, None)? };
+        let buffer_handle = unsafe { context.create_buffer(&create_info, None)? };
 
         // Find a suitable memory type for the buffer.
-        let buffer_mem_reqs = unsafe { device.get_buffer_memory_requirements(buffer_handle) };
+        let buffer_mem_reqs = unsafe { context.get_buffer_memory_requirements(buffer_handle) };
         let buffer_mem_flags = vk::MemoryPropertyFlags::DEVICE_LOCAL
             | vk::MemoryPropertyFlags::HOST_VISIBLE
             | vk::MemoryPropertyFlags::HOST_COHERENT;
@@ -89,8 +88,8 @@ fn main() -> Result<()> {
         let allocate_info = vk::MemoryAllocateInfo::default()
             .allocation_size(buffer_mem_reqs.size)
             .memory_type_index(mem_type_idx);
-        let buffer_memory = unsafe { device.allocate_memory(&allocate_info, None)? };
-        unsafe { device.bind_buffer_memory(buffer_handle, buffer_memory, 0)? };
+        let buffer_memory = unsafe { context.allocate_memory(&allocate_info, None)? };
+        unsafe { context.bind_buffer_memory(buffer_handle, buffer_memory, 0)? };
 
         (buffer_handle, buffer_memory)
     };
@@ -102,7 +101,7 @@ fn main() -> Result<()> {
         let map_flags = vk::MemoryMapFlags::default();
         unsafe {
             slice::from_raw_parts_mut(
-                device
+                context
                     .map_memory(buffer_memory, 0, vk::WHOLE_SIZE, map_flags)?
                     .cast::<i32>(),
                 buffer_length,
@@ -123,7 +122,7 @@ fn main() -> Result<()> {
         let create_info = vk::DescriptorPoolCreateInfo::default()
             .max_sets(1)
             .pool_sizes(&pool_sizes);
-        unsafe { device.create_descriptor_pool(&create_info, None)? }
+        unsafe { context.create_descriptor_pool(&create_info, None)? }
     };
 
     // Allocate a single unique descriptor set from your descriptor pool, with the
@@ -132,7 +131,7 @@ fn main() -> Result<()> {
         let allocate_info = vk::DescriptorSetAllocateInfo::default()
             .descriptor_pool(descriptor_pool)
             .set_layouts(&descriptor_set_layouts);
-        unsafe { device.allocate_descriptor_sets(&allocate_info)? }
+        unsafe { context.allocate_descriptor_sets(&allocate_info)? }
     };
 
     // Enter the buffer into your descriptor set.
@@ -147,7 +146,7 @@ fn main() -> Result<()> {
     // We don't have an array of buffers, so just set array element to 0.
     // The descriptor type is uniform buffer. We are not updating image infos, so leave those empty.
     //
-    // Finally, execute the updates by calling updateDescriptorSets on the device.
+    // Finally, execute the updates by calling updateDescriptorSets on the context.
     // We are only doing writes, so no (0) copies should be passed.
     {
         let descriptor_buffer_infos = [vk::DescriptorBufferInfo::default()
@@ -162,7 +161,7 @@ fn main() -> Result<()> {
             .descriptor_count(1)
             .buffer_info(&descriptor_buffer_infos); 1];
 
-        unsafe { device.update_descriptor_sets(&descriptor_writes, &[]) }
+        unsafe { context.update_descriptor_sets(&descriptor_writes, &[]) }
     }
 
     // Allocate a command buffer from the command pool.
@@ -176,11 +175,11 @@ fn main() -> Result<()> {
             .command_pool(context.command_pool)
             .level(vk::CommandBufferLevel::PRIMARY)
             .command_buffer_count(1);
-        unsafe { device.allocate_command_buffers(&allocate_info)? }
+        unsafe { context.allocate_command_buffers(&allocate_info)? }
     };
 
     // Register commands in the command buffer, submit the command buffer to the compute queue,
-    // then wait for completion on device.
+    // then wait for completion on context.
     unsafe {
         let begin_info = vk::CommandBufferBeginInfo::default();
         let command_buffer = command_buffers[0];
@@ -188,9 +187,9 @@ fn main() -> Result<()> {
         let handle = pipeline.handle;
         let layout = pipeline.layout;
 
-        device.begin_command_buffer(command_buffer, &begin_info)?;
-        device.cmd_bind_pipeline(command_buffer, bind_point, handle);
-        device.cmd_bind_descriptor_sets(
+        context.begin_command_buffer(command_buffer, &begin_info)?;
+        context.cmd_bind_pipeline(command_buffer, bind_point, handle);
+        context.cmd_bind_descriptor_sets(
             command_buffer,
             bind_point,
             layout,
@@ -198,20 +197,20 @@ fn main() -> Result<()> {
             &descriptor_sets,
             &[],
         );
-        device.cmd_dispatch(command_buffer, 8, 1, 1);
-        device.end_command_buffer(command_buffer)?;
+        context.cmd_dispatch(command_buffer, 8, 1, 1);
+        context.end_command_buffer(command_buffer)?;
 
         let submit_infos = [vk::SubmitInfo::default().command_buffers(&command_buffers); 1];
-        device.queue_submit(context.queue, &submit_infos, vk::Fence::null())?;
-        device.device_wait_idle()?;
+        context.queue_submit(context.queue, &submit_infos, vk::Fence::null())?;
+        context.device_wait_idle()?;
     }
 
     // Destroy manually created objects.
     unsafe {
-        device.destroy_descriptor_pool(descriptor_pool, None);
-        device.free_memory(buffer_memory, None);
-        device.destroy_buffer(buffer_handle, None);
-        device.destroy_descriptor_set_layout(descriptor_set_layouts[0], None);
+        context.destroy_descriptor_pool(descriptor_pool, None);
+        context.free_memory(buffer_memory, None);
+        context.destroy_buffer(buffer_handle, None);
+        context.destroy_descriptor_set_layout(descriptor_set_layouts[0], None);
     }
 
     Ok(())

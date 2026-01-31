@@ -27,15 +27,14 @@ fn main() -> Result<()> {
     println!("====================================================================\n");
 
     // Set up a simple compute pipeline.
-    let device = &context.device;
     let source_file = format!("{}/hello.spv", env::var("OUT_DIR")?);
     let descriptor_set_layouts = [{
         let create_info = vk::DescriptorSetLayoutCreateInfo::default();
-        unsafe { device.create_descriptor_set_layout(&create_info, None)? }
+        unsafe { context.create_descriptor_set_layout(&create_info, None)? }
     }; 1];
 
     let pipeline =
-        framework::setup_compute_pipeline(device, &source_file, &descriptor_set_layouts)?;
+        framework::create_compute_pipeline(&context, &source_file, &descriptor_set_layouts)?;
 
     // Allocate a command buffer from the command pool.
     let command_buffers = {
@@ -43,32 +42,32 @@ fn main() -> Result<()> {
             .command_pool(context.command_pool)
             .level(vk::CommandBufferLevel::PRIMARY)
             .command_buffer_count(1);
-        unsafe { device.allocate_command_buffers(&allocate_info)? }
+        unsafe { context.allocate_command_buffers(&allocate_info)? }
     };
 
     // Register commands in the command buffer, submit the command buffer to the compute queue,
-    // then wait for completion on device.
+    // then wait for completion on context.
     unsafe {
         let begin_info = vk::CommandBufferBeginInfo::default();
         let command_buffer = command_buffers[0];
 
-        device.begin_command_buffer(command_buffer, &begin_info)?;
-        device.cmd_bind_pipeline(
+        context.begin_command_buffer(command_buffer, &begin_info)?;
+        context.cmd_bind_pipeline(
             command_buffer,
             vk::PipelineBindPoint::COMPUTE,
             pipeline.handle,
         );
-        device.cmd_dispatch(command_buffer, 4, 1, 1);
-        device.end_command_buffer(command_buffer)?;
+        context.cmd_dispatch(command_buffer, 4, 1, 1);
+        context.end_command_buffer(command_buffer)?;
 
         let submit_infos = [vk::SubmitInfo::default().command_buffers(&command_buffers); 1];
-        device.queue_submit(context.queue, &submit_infos, vk::Fence::null())?;
-        device.device_wait_idle()?;
+        context.queue_submit(context.queue, &submit_infos, vk::Fence::null())?;
+        context.device_wait_idle()?;
     }
 
     // Destroy manually created objects.
     unsafe {
-        device.destroy_descriptor_set_layout(descriptor_set_layouts[0], None);
+        context.destroy_descriptor_set_layout(descriptor_set_layouts[0], None);
     }
 
     Ok(())
