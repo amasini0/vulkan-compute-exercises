@@ -18,6 +18,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "bitflags"
+version = "2.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "812e12b5285cc515a9c72a5c1d3b6d46a19dac5acfef5265968c166106e31dd3"
+
+[[package]]
+name = "cc"
+version = "1.2.54"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6354c81bbfd62d9cfa9cb3c773c2b7b2a3a482d569de977fd0e961f6e7c00583"
+dependencies = [
+ "find-msvc-tools",
+ "shlex",
+]
+
+[[package]]
 name = "cfg-if"
 version = "1.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -59,11 +75,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "e04_copying"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "ash",
+ "framework",
+ "vk-mem",
+]
+
+[[package]]
+name = "find-msvc-tools"
+version = "0.1.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8591b0bcc8a98a64310a2fae1bb3e9b8564dd10e381e6e28010fde8e8e8568db"
+
+[[package]]
 name = "framework"
 version = "0.1.0"
 dependencies = [
  "anyhow",
  "ash",
+ "vk-mem",
 ]
 
 [[package]]
@@ -74,6 +107,23 @@ checksum = "d7c4b02199fee7c5d21a5ae7d8cfa79a6ef5bb2fc834d6e9058e89c825efdc55"
 dependencies = [
  "cfg-if",
  "windows-link",
+]
+
+[[package]]
+name = "shlex"
+version = "1.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0fda2ff0d084019ba4d7c6f371c95d8fd75ce3524c3cb8fb653a3023f6323e64"
+
+[[package]]
+name = "vk-mem"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4d7ba61d9155d2a6eb77693f6e83953c392cda219d2882fb0a95f781c5eb06ec"
+dependencies = [
+ "ash",
+ "bitflags",
+ "cc",
 ]
 
 [[package]]

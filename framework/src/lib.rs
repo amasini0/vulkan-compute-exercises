@@ -1,53 +1,20 @@
 use anyhow::{Result, anyhow};
-use ash::{Device, Entry, Instance, vk};
+use ash::{Entry, vk};
 use std::ffi::{CStr, c_char};
 use std::fs::File;
+use vk_mem;
 
-/// Handles for GPU context-related objects
-pub struct Context<'a> {
-    _entry: &'a Entry,
-    pub instance: Instance,
-    pub physical_device: vk::PhysicalDevice,
-    pub device: Device,
-    pub queue: vk::Queue,
-    pub command_pool: vk::CommandPool,
-}
+use crate::context::Context;
+use crate::pipeline::Pipeline;
 
-impl<'a> Drop for Context<'a> {
-    fn drop(&mut self) {
-        unsafe {
-            self.device.destroy_command_pool(self.command_pool, None);
-            self.device.destroy_device(None);
-            self.instance.destroy_instance(None);
-        }
-    }
-}
-
-/// Handles for pipeline-related objects
-pub struct Pipeline<'a> {
-    device: &'a Device,
-    pub handle: vk::Pipeline,
-    pub layout: vk::PipelineLayout,
-    pub cache: vk::PipelineCache,
-    pub shader_module: vk::ShaderModule,
-}
-
-impl<'a> Drop for Pipeline<'a> {
-    fn drop(&mut self) {
-        unsafe {
-            self.device.destroy_pipeline(self.handle, None);
-            self.device.destroy_pipeline_cache(self.cache, None);
-            self.device.destroy_pipeline_layout(self.layout, None);
-            self.device.destroy_shader_module(self.shader_module, None);
-        }
-    }
-}
+mod context;
+mod pipeline;
 
 fn load_shader(source_file: &str) -> Result<Vec<u32>> {
     let mut file = File::open(source_file)
         .map_err(|_| anyhow!(format!("Failed to open file {}", source_file)))?;
 
-    // Read spirv from open file.
+    // Read spir-v binary from open file.
     ash::util::read_spv(&mut file)
         .map_err(|_| anyhow!(format!("Failed to read spirv from file {}", source_file)))
 }
@@ -153,8 +120,8 @@ pub fn setup_compute_context<'a>(
 
 /// Sets up a compute pipeline on the given device using the provided shaders and layout bindings.
 /// If successful, returns a Pipeline struct containing all the pipeline-related objects.
-pub fn setup_compute_pipeline<'a>(
-    device: &'a Device,
+pub fn create_compute_pipeline<'a>(
+    context: &'a Context,
     source_file: &str,
     descriptor_set_layouts: &[vk::DescriptorSetLayout],
 ) -> Result<Pipeline<'a>> {
@@ -163,7 +130,7 @@ pub fn setup_compute_pipeline<'a>(
     let shader_module = {
         let shader_code = load_shader(source_file)?;
         let create_info = vk::ShaderModuleCreateInfo::default().code(shader_code.as_slice());
-        unsafe { device.create_shader_module(&create_info, None)? }
+        unsafe { context.device.create_shader_module(&create_info, None)? }
     };
 
     // Create a unique pipeline layout using the incoming descriptor set layouts to configure it
@@ -171,13 +138,13 @@ pub fn setup_compute_pipeline<'a>(
     let pipeline_layout = {
         let create_info =
             vk::PipelineLayoutCreateInfo::default().set_layouts(descriptor_set_layouts);
-        unsafe { device.create_pipeline_layout(&create_info, None)? }
+        unsafe { context.device.create_pipeline_layout(&create_info, None)? }
     };
 
     // Create a unique pipeline cache.
     let pipeline_cache = {
         let create_info = vk::PipelineCacheCreateInfo::default();
-        unsafe { device.create_pipeline_cache(&create_info, None)? }
+        unsafe { context.device.create_pipeline_cache(&create_info, None)? }
     };
 
     // Create a unique pipeline.
@@ -195,14 +162,18 @@ pub fn setup_compute_pipeline<'a>(
             .stage(stage_info)
             .layout(pipeline_layout); 1];
 
-        match unsafe { device.create_compute_pipelines(pipeline_cache, &create_infos, None) } {
+        match unsafe {
+            context
+                .device
+                .create_compute_pipelines(pipeline_cache, &create_infos, None)
+        } {
             Ok(pipelines) => pipelines[0],
             Err(_) => Err(anyhow!("Failed to create compute pipeline"))?,
         }
     };
 
     Ok(Pipeline {
-        device,
+        context: &context,
         handle: pipeline,
         layout: pipeline_layout,
         cache: pipeline_cache,
@@ -226,4 +197,15 @@ pub fn find_memory_type_idx(
             is_supported_type && has_requested_flags
         })
         .map(|(i, _)| i as _)
+}
+
+///
+pub fn create_allocator(context: &Context, api_version: u32) -> Result<vk_mem::Allocator> {
+    let mut create_info = vk_mem::AllocatorCreateInfo::new(
+        &context.instance,
+        &context.device,
+        context.physical_device,
+    );
+    create_info.vulkan_api_version = api_version;
+    unsafe { Ok(vk_mem::Allocator::new(create_info)?) }
 }
