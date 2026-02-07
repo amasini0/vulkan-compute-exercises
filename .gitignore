@@ -4,3 +4,6 @@
 
 # Build files
 target/
+
+# Program outputs
+output.png

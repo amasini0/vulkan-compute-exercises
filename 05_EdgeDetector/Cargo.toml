@@ -1,0 +1,16 @@
+[package]
+name = "e05_edge_detector"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = "1.0.100"
+ash = "0.38.0"
+framework = { version = "0.1.0", path = "../framework" }
+image = { version = "0.25.9", default-features = false, features = ["png", "jpeg"] }
+vk-mem = "0.5.0"
+log = "0.4.29"
+
+[[bin]]
+name = "05_EdgeDetector"
+path = "src/main.rs"
