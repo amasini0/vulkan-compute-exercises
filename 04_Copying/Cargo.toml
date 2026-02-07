@@ -5,7 +5,7 @@ edition = "2024"
 
 [dependencies]
 anyhow = "1.0.100"
-ash = { version = "0.38.0", default-features = false, features = ["std", "debug"] }
+ash = "0.38.0"
 framework = { version = "0.1.0", path = "../framework" }
 vk-mem = "0.5.0"
 
