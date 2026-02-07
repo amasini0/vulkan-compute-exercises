@@ -9,7 +9,6 @@ ash = "0.38.0"
 framework = { version = "0.1.0", path = "../framework" }
 image = { version = "0.25.9", default-features = false, features = ["png", "jpeg"] }
 vk-mem = "0.5.0"
-log = "0.4.29"
 
 [[bin]]
 name = "05_EdgeDetector"

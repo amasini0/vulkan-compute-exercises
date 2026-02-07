@@ -1,0 +1,53 @@
+BasedOnStyle: Microsoft
+ColumnLimit: 80
+MaxEmptyLinesToKeep: 2
+SortIncludes: CaseSensitive
+SortUsingDeclarations: LexicographicNumeric
+
+# Short things on a single line
+AllowShortFunctionsOnASingleLine: Inline
+AllowShortEnumsOnASingleLine: true
+AllowShortLambdasOnASingleLine: Inline
+
+# Bin packing of arguments/parameters
+AllowAllArgumentsOnNextLine: true
+BinPackArguments: false
+AllowAllParametersOfDeclarationOnNextLine: true
+BinPackParameters: OnePerLine
+ExperimentalAutoDetectBinPacking: false
+
+# Braces and brackets
+AlignAfterOpenBracket: BlockIndent
+BreakBeforeBraces: Custom
+BraceWrapping:
+  AfterCaseLabel: true
+  AfterClass: true
+  AfterControlStatement: Always
+  AfterEnum: true
+  AfterFunction: true
+  AfterNamespace: false
+  AfterStruct: true
+  AfterUnion: true
+  AfterExternBlock: true
+  BeforeCatch: false
+  BeforeElse: true
+  BeforeLambdaBody: true
+  BeforeWhile: true
+  SplitEmptyRecord: false
+
+# Comments
+AlignTrailingComments:
+  Kind: Always
+  OverEmptyLines: 1
+ReflowComments: Always
+PenaltyBreakComment: 0
+
+# Multiline strings
+AlwaysBreakBeforeMultilineStrings: true
+
+# Access modifiers
+IndentAccessModifiers: false
+AccessModifierOffset: -4
+
+# Qualifiers
+QualifierAlignment: Left

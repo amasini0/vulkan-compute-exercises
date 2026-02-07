@@ -7,3 +7,6 @@ target/
 
 # Program outputs
 output.png
+
+# Performance reports
+perf.data*

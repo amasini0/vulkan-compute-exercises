@@ -1,6 +1,6 @@
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use ash::vk;
-use image;
+use image::{self, ColorType, EncodableLayout};
 use std::{env, path, ptr, slice};
 use vk_mem::{self, Alloc};
 
@@ -23,24 +23,13 @@ fn main() -> Result<()> {
 
     // Read input image from file.
     let source_image = image::open(&args[1])
-        .map_err(|e| anyhow!("{}: failed to open '{}' -- {:#}", program, &args[1], e))?;
+        .map_err(|e| anyhow!("{}: failed to open '{}' -- {:#}", program, &args[1], e))?
+        .into_rgba8();
     let width = source_image.width();
     let height = source_image.height();
     let image_size = source_image.as_bytes().len();
-    let base = source_image
-        .as_rgba8()
-        .unwrap()
-        .as_raw()
-        .as_ptr()
-        .cast::<u32>();
-
-    println!("------ CPU ------");
-    println!("width: {}, height: {}", width, height);
-    for i in 50932usize..50934 {
-        let element = unsafe { *(base.wrapping_add(i)) };
-        println!("{i} -> {element}");
-    }
-    println!("\n------ GPU ------");
+    println!("Image path: \"{}\"", args[1]);
+    println!("Dimensions: {} x {}", width, height);
 
     // Initialize a GPU context and a GPU allocator.
     let entry = unsafe { ash::Entry::load() }
@@ -131,13 +120,8 @@ fn main() -> Result<()> {
                 .stage_flags(vk::ShaderStageFlags::COMPUTE),
         ];
         let create_info = vk::DescriptorSetLayoutCreateInfo::default().bindings(&layout_bindings);
-        unsafe { context.create_descriptor_set_layout(&create_info, None) }.map_err(|e| {
-            anyhow!(
-                "{}: failed to create descriptor set layout -- {:#}",
-                program,
-                e
-            )
-        })?
+        unsafe { context.create_descriptor_set_layout(&create_info, None) }
+            .map_err(|e| anyhow!("{}: failed to create layout -- {:#}", program, e))?
     }];
 
     let descriptor_sets = {
@@ -209,7 +193,7 @@ fn main() -> Result<()> {
     }
 
     // Set up the compute pipeline.
-    let source_file = format!("{}/sobel.spv", env::var("OUT_DIR")?);
+    let source_file = format!("{}/sobel.spv", env::var("OUT_DIR").unwrap_or(String::from(".")));
     let pipeline =
         framework::create_compute_pipeline(&context, &source_file, &descriptor_set_layouts)
             .map_err(|e| anyhow!("{}: failed to create compute pipeline -- {:#}", program, e))?;
@@ -274,6 +258,7 @@ fn main() -> Result<()> {
     }
 
     // Submit the command buffer to the queue
+    
     unsafe {
         let submit_info = vk::SubmitInfo::default().command_buffers(&command_buffers);
         context.queue_submit(context.queue, &[submit_info], vk::Fence::null())?;
@@ -298,9 +283,10 @@ fn main() -> Result<()> {
         result_image_data,
         width,
         height,
-        source_image.color(),
+        ColorType::Rgba8,
     )
     .map_err(|e| anyhow!("{}: failed to write output image -- {:#}", program, e))?;
+    println!("Program finished. Image written to: 'output.png'");
 
     // Free resources
     unsafe {
