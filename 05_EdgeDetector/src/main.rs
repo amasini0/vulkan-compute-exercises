@@ -1,6 +1,6 @@
-use anyhow::{Result, anyhow};
+use anyhow::{anyhow, Result};
 use ash::vk;
-use image::{self, ColorType, EncodableLayout};
+use image::{self, EncodableLayout};
 use std::{env, path, ptr, slice};
 use vk_mem::{self, Alloc};
 
@@ -22,12 +22,12 @@ fn main() -> Result<()> {
     println!("\n{} starting...\n", program);
 
     // Read input image from file.
-    let source_image = image::open(&args[1])
+    let mut image = image::open(&args[1])
         .map_err(|e| anyhow!("{}: failed to open '{}' -- {:#}", program, &args[1], e))?
         .into_rgba8();
-    let width = source_image.width();
-    let height = source_image.height();
-    let image_size = source_image.as_bytes().len();
+    let width = image.width();
+    let height = image.height();
+    let image_size = image.as_bytes().len();
     println!("Image path: \"{}\"", args[1]);
     println!("Dimensions: {} x {}", width, height);
 
@@ -165,35 +165,34 @@ fn main() -> Result<()> {
     // Fill the created buffers with information.
     // The info buffer is for meta information that we need, the width and the height of the image.
     // Map its memory and then write the two integers in this order: 1) width 2) height.
-    let params = unsafe {
-        slice::from_raw_parts_mut(
+    unsafe {
+        let params = slice::from_raw_parts_mut(
             allocator
                 .map_memory(&mut params_buffer.1)
                 .map_err(|e| anyhow!("{}: failed to map memory -- {:#}", program, e))?
                 .cast::<u32>(),
             2,
-        )
+        );
+        params[0] = width;
+        params[1] = height;
+        allocator.unmap_memory(&mut params_buffer.1);
     };
-    params[0] = width;
-    params[1] = height;
 
     // The src buffer is for storing the image color data.
     // Map its memory and then copy the contents of the image vector there.
-    let source_buffer_memory = unsafe {
-        allocator
-            .map_memory(&mut source_buffer.1)
-            .map_err(|e| anyhow!("{}: failed to map memory -- {:#}", program, e))?
-    };
     unsafe {
-        ptr::copy(
-            source_image.as_bytes().as_ptr(),
-            source_buffer_memory,
-            image_size,
-        );
+        let source_data = allocator
+            .map_memory(&mut source_buffer.1)
+            .map_err(|e| anyhow!("{}: failed to map memory -- {:#}", program, e))?;
+        ptr::copy(image.as_ptr(), source_data, image_size);
+        allocator.unmap_memory(&mut source_buffer.1);
     }
 
     // Set up the compute pipeline.
-    let source_file = format!("{}/sobel.spv", env::var("OUT_DIR").unwrap_or(String::from(".")));
+    let source_file = format!(
+        "{}/sobel.spv",
+        env::var("OUT_DIR").unwrap_or(String::from("."))
+    );
     let pipeline =
         framework::create_compute_pipeline(&context, &source_file, &descriptor_set_layouts)
             .map_err(|e| anyhow!("{}: failed to create compute pipeline -- {:#}", program, e))?;
@@ -258,7 +257,6 @@ fn main() -> Result<()> {
     }
 
     // Submit the command buffer to the queue
-    
     unsafe {
         let submit_info = vk::SubmitInfo::default().command_buffers(&command_buffers);
         context.queue_submit(context.queue, &[submit_info], vk::Fence::null())?;
@@ -268,24 +266,17 @@ fn main() -> Result<()> {
     // Write the contents of the dst buffer out into an image.
     // It will be named "output.png".
     // You should find it in the location where the built files for THIS TASK are located.
-    let result_image_data = unsafe {
-        slice::from_raw_parts(
-            allocator
-                .map_memory(&mut result_buffer.1)
-                .map_err(|e| anyhow!("{}: failed to map memory -- {:#}", program, e))?,
-            image_size,
-        )
+    unsafe {
+        let result_data = allocator
+            .map_memory(&mut result_buffer.1)
+            .map_err(|e| anyhow!("{}: failed to map memory -- {:#}", program, e))?;
+        ptr::copy(result_data, image.as_mut_ptr(), image_size);
+        allocator.unmap_memory(&mut result_buffer.1);
     };
 
-    // Save output image.
-    image::save_buffer(
-        "output.png",
-        result_image_data,
-        width,
-        height,
-        ColorType::Rgba8,
-    )
-    .map_err(|e| anyhow!("{}: failed to write output image -- {:#}", program, e))?;
+    image
+        .save("output.png")
+        .map_err(|e| anyhow!("{}: failed to write image -- {:#}", program, e))?;
     println!("Program finished. Image written to: 'output.png'");
 
     // Free resources
@@ -294,9 +285,6 @@ fn main() -> Result<()> {
         context.destroy_descriptor_set_layout(descriptor_set_layouts[0], None);
         context.destroy_descriptor_pool(descriptor_pool, None);
 
-        allocator.unmap_memory(&mut result_buffer.1);
-        allocator.unmap_memory(&mut source_buffer.1);
-        allocator.unmap_memory(&mut params_buffer.1);
         allocator.destroy_buffer(result_buffer.0, &mut result_buffer.1);
         allocator.destroy_buffer(source_buffer.0, &mut source_buffer.1);
         allocator.destroy_buffer(params_buffer.0, &mut params_buffer.1);
