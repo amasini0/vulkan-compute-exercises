@@ -1,3 +1,5 @@
+#language slang 2025
+
 static const float phi = 0.5 * (1.0 + sqrt(5));
 static const float psi = 0.5 * (1.0 - sqrt(5));
 
@@ -6,7 +8,8 @@ RWStructuredBuffer<int> buffer;
 
 [shader("compute")]
 [numthreads(32, 1, 1)]
-void main(uint3 thread_id: SV_DispatchThreadID) {
+void main(uint3 thread_id: SV_DispatchThreadID)
+{
     const uint n = thread_id.x;
     const float phi_n = pow(phi, n);
     const float psi_n = ((n % 2 == 1) ? -1 : 1) * pow(-psi, n); // WTF

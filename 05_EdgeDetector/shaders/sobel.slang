@@ -1,3 +1,5 @@
+#language slang 2025
+
 struct ImageParams
 {
     uint width;
