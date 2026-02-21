@@ -1,5 +1,5 @@
-use anyhow::{Result, anyhow};
-use ash::{Entry, vk};
+use anyhow::{anyhow, Result};
+use ash::{vk, Entry};
 use framework;
 use std::env;
 use std::slice;
@@ -180,8 +180,9 @@ fn main() -> Result<()> {
         )
     }
     .iter()
-    .enumerate()
-    .for_each(|(n, fib)| println!("{:>4} : {:<}", n, fib));
+    .skip(1)
+    .take(20)
+    .for_each(|n| print!("{} ", n));
     println!();
 
     // Destroy manually created objects.

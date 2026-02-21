@@ -204,8 +204,7 @@ fn main() -> Result<()> {
 
     // Submit command buffer to compute queue.
     unsafe {
-        let submit_info = vk::SubmitInfo::default()
-            .command_buffers(&command_buffers);
+        let submit_info = vk::SubmitInfo::default().command_buffers(&command_buffers);
         context.queue_submit(context.queue, &[submit_info], vk::Fence::null())?;
         context.device_wait_idle()?;
     }
@@ -215,11 +214,14 @@ fn main() -> Result<()> {
     let primes = unsafe { slice::from_raw_parts_mut(output_mapped, num_primes as usize) };
     primes.sort();
 
-    println!("Primes found: {:>4}", num_primes);
+    println!("Tested up to : {:>4}", nums_tested);
+    println!("Primes found : {:>4}", num_primes);
     println!("{:=^50}", "");
     primes.iter().enumerate().for_each(|(i, prime)| {
         print!(" {:4}", prime);
-        if i % 10 == 9 { println!(); }
+        if i % 10 == 9 {
+            println!();
+        }
     });
     println!("\n{:=^50}", "");
 
