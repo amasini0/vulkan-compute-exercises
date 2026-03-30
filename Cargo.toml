@@ -5,7 +5,10 @@ members = [
     "01_HelloGPU",
     "02_UniformBuffer",
     "03_StorageBuffer",
-    "04_Copying", "05_EdgeDetector", "06_Atomics",
+    "04_Copying",
+    "05_EdgeDetector",
+    "06_Atomics",
+    "07_PointCloudRender",
     "framework"
 ]
 
