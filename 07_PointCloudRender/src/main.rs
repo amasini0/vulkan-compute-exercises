@@ -50,6 +50,11 @@ fn main() -> Result<()> {
     let allocator = framework::create_allocator(&context, api_version)
         .map_err(|e| anyhow!("{}: failed to create allocator -- {:#}", program, e))?;
 
+    // Print selected physical device name.
+    let instance = &context.instance;
+    let device_props = unsafe { instance.get_physical_device_properties(context.physical_device) };
+    println!("Device name: {:?}\n", device_props.device_name_as_c_str());
+
     // Read point cloud from file.
     let point_cloud = pointcloud::load_cloud(&args[1]).map_err(|e| {
         anyhow!(

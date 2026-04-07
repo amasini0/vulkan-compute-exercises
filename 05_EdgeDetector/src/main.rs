@@ -43,6 +43,11 @@ fn main() -> Result<()> {
     let allocator = framework::create_allocator(&context, api_version)
         .map_err(|e| anyhow!("{}: failed to create GPU allocator -- {:#}", program, e))?;
 
+    // Print selected physical device name.
+    let instance = &context.instance;
+    let device_props = unsafe { instance.get_physical_device_properties(context.physical_device) };
+    println!("Device name: {:?}\n", device_props.device_name_as_c_str());
+
     // Description for the resources that go into our pipeline (and descriptor set):
     // - One uniform buffer for image parameters (width, height)
     // - One storage buffer for the source image (width * height * 4 channels, RGBA)

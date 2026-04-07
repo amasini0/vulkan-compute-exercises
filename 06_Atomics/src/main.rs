@@ -23,6 +23,11 @@ fn main() -> Result<()> {
         (context, allocator)
     };
 
+    // Print selected physical device name.
+    let instance = &context.instance;
+    let device_props = unsafe { instance.get_physical_device_properties(context.physical_device) };
+    println!("Device name: {:?}\n", device_props.device_name_as_c_str());
+
     let num_workgroups = 25; // How many workgroups we will start
     let workgroup_size = 128; // How many threads we expect in each workgroup
     let nums_tested = num_workgroups * workgroup_size; // Total number of threads
