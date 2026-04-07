@@ -9,6 +9,7 @@ members = [
     "05_EdgeDetector",
     "06_Atomics",
     "07_PointCloudRender",
+    "08_SharedMemory",
     "framework"
 ]
 

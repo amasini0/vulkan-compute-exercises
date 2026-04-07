@@ -150,6 +150,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "e08_shared_memory"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "ash",
+ "framework",
+]
+
+[[package]]
 name = "fdeflate"
 version = "0.3.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"

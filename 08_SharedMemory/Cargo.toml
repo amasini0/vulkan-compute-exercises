@@ -1,0 +1,13 @@
+[package]
+name = "e08_shared_memory"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = "1.0.102"
+ash = "0.38.0"
+framework = { version = "0.1.0", path = "../framework" }
+
+[[bin]]
+name = "08_SharedMemory"
+path = "src/main.rs"
