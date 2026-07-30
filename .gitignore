@@ -1,0 +1,12 @@
+# Editor folders
+.idea/
+.vscode/
+
+# Build files
+build/
+cmake-build-debug/
+cmake-build-release/
+target/
+
+# Program outputs
+output.png
