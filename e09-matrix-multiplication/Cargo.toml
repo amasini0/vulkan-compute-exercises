@@ -1,0 +1,12 @@
+[package]
+name = "e09-matrix-multiplication"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = "1.0.102"
+ash = "0.38.0"
+framework = { version = "0.1.0", path = "../framework" }
+rand = "0.10.1"
+random = "0.14.1"
+

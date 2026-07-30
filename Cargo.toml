@@ -10,6 +10,7 @@ members = [
     "e06-atomics",
     "e07-point-cloud-renderer",
     "e08-shared-memory",
+    "e09-matrix-multiplication",
     "framework"
 ]
 
