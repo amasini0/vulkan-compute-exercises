@@ -1,5 +1,5 @@
 [package]
-name = "e00_my_gpu"
+name = "e00-my-gpu"
 version = "0.1.0"
 edition = "2024"
 
@@ -7,6 +7,3 @@ edition = "2024"
 anyhow = "1.0.100"
 ash = "0.38.0"
 
-[[bin]]
-name = "00_MyGPU"
-path = "src/main.rs"

@@ -1,5 +1,5 @@
 [package]
-name = "e04_copying"
+name = "e02-uniform-buffer"
 version = "0.1.0"
 edition = "2024"
 
@@ -7,8 +7,4 @@ edition = "2024"
 anyhow = "1.0.100"
 ash = "0.38.0"
 framework = { version = "0.1.0", path = "../framework" }
-vk-mem = "0.5.0"
 
-[[bin]]
-name = "04_Copying"
-path = "src/main.rs"

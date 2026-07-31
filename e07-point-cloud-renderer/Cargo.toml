@@ -1,5 +1,5 @@
 [package]
-name = "e07_point_cloud_renderer"
+name = "e07-point-cloud-renderer"
 version = "0.1.0"
 edition = "2024"
 
@@ -10,6 +10,3 @@ framework = { version = "0.1.0", path = "../framework" }
 glam = "0.32.1"
 image = { version = "0.25.9", default-features = false, features = ["png", "jpeg"] }
 
-[[bin]]
-name = "07_PointCloudRenderer"
-path = "src/main.rs"

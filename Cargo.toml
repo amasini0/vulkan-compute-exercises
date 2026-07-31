@@ -1,15 +1,15 @@
 [workspace]
 resolver = "3"
 members = [
-    "00_MyGPU",
-    "01_HelloGPU",
-    "02_UniformBuffer",
-    "03_StorageBuffer",
-    "04_Copying",
-    "05_EdgeDetector",
-    "06_Atomics",
-    "07_PointCloudRender",
-    "08_SharedMemory",
+    "e00-my-gpu",
+    "e01-hello-gpu",
+    "e02-uniform-buffer",
+    "e03-storage-buffer",
+    "e04-copying",
+    "e05-edge-detector",
+    "e06-atomics",
+    "e07-point-cloud-renderer",
+    "e08-shared-memory",
     "framework"
 ]
 

@@ -1,13 +1,10 @@
 [package]
-name = "e02_uniform_buffer"
+name = "e08-shared-memory"
 version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-anyhow = "1.0.100"
+anyhow = "1.0.102"
 ash = "0.38.0"
 framework = { version = "0.1.0", path = "../framework" }
 
-[[bin]]
-name = "02_UniformBuffer"
-path = "src/main.rs"

@@ -1,5 +1,5 @@
 [package]
-name = "e03_storage_buffer"
+name = "e03-storage-buffer"
 version = "0.1.0"
 edition = "2024"
 
@@ -8,6 +8,3 @@ anyhow = "1.0.100"
 ash = "0.38.0"
 framework = { version = "0.1.0", path = "../framework" }
 
-[[bin]]
-name = "03_StorageBuffer"
-path = "src/main.rs"

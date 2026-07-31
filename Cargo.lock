@@ -73,7 +73,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "e00_my_gpu"
+name = "e00-my-gpu"
 version = "0.1.0"
 dependencies = [
  "anyhow",
@@ -81,16 +81,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "e01_hello_gpu"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "ash",
- "framework",
-]
-
-[[package]]
-name = "e02_uniform_buffer"
+name = "e01-hello-gpu"
 version = "0.1.0"
 dependencies = [
  "anyhow",
@@ -99,7 +90,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "e03_storage_buffer"
+name = "e02-uniform-buffer"
 version = "0.1.0"
 dependencies = [
  "anyhow",
@@ -108,7 +99,16 @@ dependencies = [
 ]
 
 [[package]]
-name = "e04_copying"
+name = "e03-storage-buffer"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "ash",
+ "framework",
+]
+
+[[package]]
+name = "e04-copying"
 version = "0.1.0"
 dependencies = [
  "anyhow",
@@ -118,7 +118,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "e05_edge_detector"
+name = "e05-edge-detector"
 version = "0.1.0"
 dependencies = [
  "anyhow",
@@ -129,7 +129,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "e06_atomics"
+name = "e06-atomics"
 version = "0.1.0"
 dependencies = [
  "anyhow",
@@ -139,7 +139,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "e07_point_cloud_renderer"
+name = "e07-point-cloud-renderer"
 version = "0.1.0"
 dependencies = [
  "anyhow",
@@ -150,7 +150,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "e08_shared_memory"
+name = "e08-shared-memory"
 version = "0.1.0"
 dependencies = [
  "anyhow",

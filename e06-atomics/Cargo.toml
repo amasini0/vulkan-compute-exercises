@@ -1,13 +1,11 @@
 [package]
-name = "e08_shared_memory"
+name = "e06-atomics"
 version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-anyhow = "1.0.102"
+anyhow = "1.0.101"
 ash = "0.38.0"
 framework = { version = "0.1.0", path = "../framework" }
+vk-mem = "0.5.0"
 
-[[bin]]
-name = "08_SharedMemory"
-path = "src/main.rs"

@@ -1,14 +1,11 @@
 [package]
-name = "e06_atomics"
+name = "e04-copying"
 version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-anyhow = "1.0.101"
+anyhow = "1.0.100"
 ash = "0.38.0"
 framework = { version = "0.1.0", path = "../framework" }
 vk-mem = "0.5.0"
 
-[[bin]]
-name = "06_Atomics"
-path = "src/main.rs"
